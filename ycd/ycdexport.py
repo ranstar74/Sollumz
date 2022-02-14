@@ -8,7 +8,7 @@ from numpy import deg2rad
 from ..resources.clipsdictionary import *
 from ..sollumz_properties import SollumType
 from ..tools.jenkhash import Generate
-from ..tools.blenderhelper import build_bone_tag_map, get_armature_obj
+from ..tools.blenderhelper import build_tag_bone_map, get_armature_obj
 from ..tools.animationhelper import *
 
 def get_name(item):
@@ -291,7 +291,7 @@ def animation_from_object(animation_obj):
     if animation_properties.armature:
         armature_obj = get_armature_obj(animation_properties.armature)
         
-        bones_map = build_bone_tag_map(armature_obj)
+        bones_map = build_tag_bone_map(armature_obj)
 
         if animation_properties.base_action:
             action = animation_properties.base_action

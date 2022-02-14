@@ -204,7 +204,7 @@ def set_rotation_limit(joint, bone):
 def rotation_limits_to_obj(rotation_limits, armature):
 
     # there should be more joint types than RotationLimits
-    tag_bone_map = build_bonename_tag_map(armature)
+    tag_bone_map = build_tag_bone_name_map(armature)
     if tag_bone_map is None:
         return None
 

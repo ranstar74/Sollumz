@@ -3,7 +3,7 @@ import bpy
 from mathutils import Vector, Quaternion, Matrix
 from ..resources.clipsdictionary import YCD
 from ..sollumz_properties import SOLLUMZ_UI_NAMES, SollumType
-from ..tools.blenderhelper import build_bone_tag_map, get_armature_obj
+from ..tools.blenderhelper import build_tag_bone_map, get_armature_obj
 from ..tools.utils import list_index_exists
 
 def create_anim_obj(type):
@@ -117,7 +117,7 @@ def get_quaternion_from_sequence_data(sequence_data, frame_id, p_bone, is_conver
 
 
 def combine_sequences_and_convert_to_groups(animation, armature):
-    bone_map = build_bone_tag_map(armature)
+    bone_map = build_tag_bone_map(armature)
 
     sequence_frame_limit = animation.sequence_frame_limit
 
