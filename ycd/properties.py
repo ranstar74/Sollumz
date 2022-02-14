@@ -14,7 +14,7 @@ def animations_filter(self, object):
 
 
 class ClipDictionary(bpy.types.PropertyGroup):
-    armature: bpy.props.PointerProperty(name='Armature', type=bpy.types.Armature)
+    pass
 
 
 class ClipAnimation(bpy.types.PropertyGroup):
@@ -35,15 +35,39 @@ class ClipProperties(bpy.types.PropertyGroup):
 
     animations: bpy.props.CollectionProperty(name='Animations', type=ClipAnimation)
 
-
 class AnimationProperties(bpy.types.PropertyGroup):
     hash: bpy.props.StringProperty(name='Hash', default='')
     frame_count: bpy.props.IntProperty(name='Frame Count', default=1, min=1)
 
-    base_action: bpy.props.PointerProperty(name='Base', type=bpy.types.Action)
-    root_motion_location_action: bpy.props.PointerProperty(name='Root Position', type=bpy.types.Action)
-    root_motion_rotation_action: bpy.props.PointerProperty(name='Root Rotation', type=bpy.types.Action)
+    armature: bpy.props.PointerProperty(
+        name='Armature', 
+        type=bpy.types.Armature, 
+        description="Armature source. Leave empty for camera or drawable that does not have an armature")
 
+    base_action: bpy.props.PointerProperty(
+        name='Base', 
+        type=bpy.types.Action, 
+        description="Action for object with Armature such as ped or vehicle")
+
+    root_motion_location_action: bpy.props.PointerProperty(
+        name='Root Position', 
+        type=bpy.types.Action, 
+        description="Action for model collision position in space, known as Root Motion")
+
+    root_motion_rotation_action: bpy.props.PointerProperty(
+        name='Root Rotation', 
+        type=bpy.types.Action, 
+        description="Action for model collision rotation in space, known as Root Motion")
+
+    camera_action: bpy.props.PointerProperty(
+        name='Camera', 
+        type=bpy.types.Action, 
+        description="Action for camera transformation in space")
+
+    camera_fov_action: bpy.props.PointerProperty(
+        name='Camera FOV', 
+        type=bpy.types.Action, 
+        description="Action for camera fov")
 
 def register():
     bpy.types.Object.clip_dict_properties = bpy.props.PointerProperty(type=ClipDictionary)

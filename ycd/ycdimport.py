@@ -3,8 +3,7 @@ import bpy
 from mathutils import Vector, Quaternion, Matrix
 from ..resources.clipsdictionary import YCD
 from ..sollumz_properties import SOLLUMZ_UI_NAMES, SollumType
-from ..tools.blenderhelper import build_bone_map, get_armature_obj
-from ..tools.animationhelper import is_ped_bone_tag
+from ..tools.blenderhelper import build_bone_tag_map, get_armature_obj
 from ..tools.utils import list_index_exists
 
 def create_anim_obj(type):
@@ -117,8 +116,8 @@ def get_quaternion_from_sequence_data(sequence_data, frame_id, p_bone, is_conver
         return rotation
 
 
-def combine_sequences_and_convert_to_groups(animation, armature, is_ped_animation):
-    bone_map = build_bone_map(armature)
+def combine_sequences_and_convert_to_groups(animation, armature):
+    bone_map = build_bone_tag_map(armature)
 
     sequence_frame_limit = animation.sequence_frame_limit
 
@@ -291,14 +290,14 @@ def actions_data_to_actions(action_name, actions_data, armature, frame_count):
     return actions
 
 
-def animation_to_obj(animation, armature, is_ped_animation):
+def animation_to_obj(animation, armature):
     animation_obj = create_anim_obj(SollumType.ANIMATION)
 
     animation_obj.name = animation.hash
     animation_obj.animation_properties.hash = animation.hash
     animation_obj.animation_properties.frame_count = animation.frame_count
 
-    actions_data = combine_sequences_and_convert_to_groups(animation, armature, is_ped_animation)
+    actions_data = combine_sequences_and_convert_to_groups(animation, armature)
     actions = actions_data_to_actions(animation.hash, actions_data, armature, animation.frame_count)
 
     if 'base' in actions:
@@ -355,20 +354,11 @@ def create_clip_dictionary_template(name, armature):
     clips_obj.parent = clip_dictionary_obj
     animations_obj.parent = clip_dictionary_obj
 
-    clip_dictionary_obj.clip_dict_properties.armature = armature
-
     return clip_dictionary_obj, clips_obj, animations_obj
 
 
 def clip_dictionary_to_obj(clip_dictionary, name, armature, armature_obj):
     clip_dictionary_obj, clips_obj, animations_obj = create_clip_dictionary_template(name, armature)
-
-    is_ped_animation = False
-
-    for p_bone in armature_obj.pose.bones:
-        if is_ped_bone_tag(p_bone.bone.bone_properties.tag):
-            is_ped_animation = True
-            break
 
     animations_map = {}
     animations_obj_map = {}
@@ -376,7 +366,7 @@ def clip_dictionary_to_obj(clip_dictionary, name, armature, armature_obj):
     for animation in clip_dictionary.animations:
         animations_map[animation.hash] = animation
 
-        animation_obj = animation_to_obj(animation, armature_obj, is_ped_animation)
+        animation_obj = animation_to_obj(animation, armature_obj)
         animation_obj.parent = animations_obj
 
         animations_obj_map[animation.hash] = animation_obj
