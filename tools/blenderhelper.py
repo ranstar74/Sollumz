@@ -1,4 +1,5 @@
 import bpy
+from ..tools.bonehelper import *
 from mathutils import Vector
 
 
@@ -67,30 +68,18 @@ def select_object_and_children(obj):
             select_object_and_children(grandchild)
 
 
-def copy_object(obj):
+def duplicate_object(obj):
     bpy.ops.object.select_all(action='DESELECT')
-    select_object_and_children(obj)
+    obj.select_set(True)
     bpy.ops.object.duplicate()
     return bpy.context.selected_objects[0]
 
 
-def delete_object(obj, children=False):
-    bpy.ops.object.select_all(action='DESELECT')
-    if children:
-        select_object_and_children(obj)
-        bpy.ops.object.delete(use_global=False)
-    else:
-        bpy.ops.object.delete(use_global=False)
-
-
-def split_object(obj, parent):
-    objs = []
+def split_object(obj):
     bpy.ops.object.select_all(action='DESELECT')
     obj.select_set(True)
     bpy.ops.mesh.separate(type='MATERIAL')
-    for child in parent.children:
-        objs.append(child)
-    return objs
+    return list(bpy.context.selected_objects)
 
 
 def join_objects(objs):
@@ -194,10 +183,9 @@ def build_tag_bone_name_map(armature):
 
     return tag_bone_map
 
-
-def build_bone_name_tag_map(armature):
+  
+def build_bone_name_tag_map(armature, use_predefined_tags = False):
     """Gets a map of bone tags in format of: BoneName - TAG"""
-
     if (armature == None):
         return None
 
@@ -206,14 +194,19 @@ def build_bone_name_tag_map(armature):
 
     tag_bone_map = {}
     for pose_bone in armature.pose.bones:
-        tag_bone_map[pose_bone.name] = pose_bone.bone.bone_properties.tag
+        if use_predefined_tags:
+            tag = try_get_bone_tag(pose_bone.name)
+
+            if tag != -1:
+                tag_bone_map[pose_bone.name] = tag
+        else:
+            tag_bone_map[pose_bone.name] = pose_bone.bone.bone_properties.tag
 
     return tag_bone_map
 
 
-def build_tag_bone_map(armature):
+def build_tag_bone_map(armature, use_predefined_tags = False):
     """Gets a map of bone tags in format of: TAG - PoseBone"""
-
     if (armature == None):
         return None
 
@@ -222,7 +215,13 @@ def build_tag_bone_map(armature):
 
     tag_bone_map = {}
     for pose_bone in armature.pose.bones:
-        tag_bone_map[pose_bone.bone.bone_properties.tag] = pose_bone
+        if use_predefined_tags:
+            tag = try_get_bone_tag(pose_bone.name)
+
+            if tag != -1:
+                tag_bone_map[tag] = pose_bone
+        else:
+            tag_bone_map[pose_bone.bone.bone_properties.tag] = pose_bone
 
     return tag_bone_map
 

@@ -396,7 +396,8 @@ def clip_from_object(clip_obj):
 
     return clip
 
-def clip_dictionary_from_object(exportop, obj, exportpath, export_settings=None):
+  
+def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
     clip_dictionary = ClipsDictionary()
 
     animations_obj = None
