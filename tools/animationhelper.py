@@ -2,44 +2,6 @@ from sys import float_info
 from mathutils import Quaternion, Vector, Euler
 from enum import IntFlag, IntEnum
 
-ped_bone_tags = [
-    11816,
-    57597,
-    23553,
-    24816,
-    24817,
-    24818,
-    58866,
-    64016,
-    64017,
-    58867,
-    64096,
-    64097,
-    58868,
-    64112,
-    64113,
-    58869,
-    64064,
-    64065,
-    58870,
-    64080,
-    64081,
-    26610,
-    4089,
-    4090,
-    26611,
-    4169,
-    4170,
-    26612,
-    4185,
-    26613,
-    4137,
-    4138,
-    26614,
-    4153,
-    4154,
-]
-
 class AnimationFlag(IntFlag):
     Default = 0
     RootMotion = 16
@@ -55,6 +17,7 @@ class TrackType(IntEnum):
     CameraRotation = 8
     UV0 = 17
     UV1 = 18
+    CameraFov = 27
 
     # TODO: Research remaning track types
     LightColor = -1
@@ -62,16 +25,18 @@ class TrackType(IntEnum):
     LightIntensity1 = -1
     LightIntensity2 = -1
     LightDirection = -1
-    CameraFov = -1
     CameraDof = -1
 
 class TrackValueType(IntEnum):
     Vector3 = 0
     Quaternion = 1
+    Float = 2
 
 class ActionType(IntEnum):
     Base = 0,
-    RootMotion = 1
+    RootMotion = 1,
+    Camera = 2,
+    CameraFov = 3
 
 TrackTypeValueMap = {
     TrackType.BonePosition: TrackValueType.Vector3,
@@ -83,10 +48,8 @@ TrackTypeValueMap = {
     TrackType.CameraRotation: TrackValueType.Quaternion,
     TrackType.UV0: TrackValueType.Vector3,
     TrackType.UV1: TrackValueType.Vector3,
+    TrackType.CameraFov: TrackValueType.Float
 }
-
-def is_ped_bone_tag(bone_tag):
-    return bone_tag in ped_bone_tags
 
 def evaluate_vector(fcurves, data_path, frames):
     xCurve = fcurves.find(data_path, index = 0)
@@ -141,6 +104,17 @@ def evaluate_quaternion(fcurves, data_path, frames):
         result.append(Quaternion((w, x, y, z)))
     return result
 
+def evaluate_float(fcurves, data_path, frames):
+    curve = fcurves.find(data_path, index = 0)
+
+    if curve is None:
+        return []
+    
+    result = []
+    for frame_id in range(0, frames):
+        result.append(curve.evaluate(frame_id))
+    return result
+
 def get_quantum_and_min_val(nums):
     min_val = float_info.max
     max_val = float_info.min
@@ -164,3 +138,28 @@ def get_quantum_and_min_val(nums):
     quantum = max(min_delta, min_quant)
 
     return min_val, quantum
+
+def fix_quaternion_lerp(quaternion, previous_quaternion):
+    """Aligns quaternion direction with previous one."""
+    # 'Flickering bug' fix - killso:
+    # This bug is caused by interpolation algorithm used in GTA
+    # which is not slerp, but straight interpolation of every value
+    # and this leads to incorrect results in cases if dot(this, next) < 0
+    # This is correct 'Quaternion Lerp' algorithm:
+    # if (Dot(start, end) >= 0f)
+    # {
+    #   result.X = (1 - amount) * start.X + amount * end.X
+    #   ...
+    # }
+    # else
+    # {
+    #   result.X = (1 - amount) * start.X - amount * end.X
+    #   ...
+    # }
+    # (Statement difference is only substracting instead of adding)
+    # But GTA algorithm doesn't have Dot check,
+    # resulting all values that are not passing this statement to 'lag' in game.
+    # (because of incorrect interpolation direction)
+    # So what we do is make all values to pass Dot(start, end) >= 0f statement
+    if Quaternion.dot(previous_quaternion, quaternion) < 0:
+        quaternion *= -1

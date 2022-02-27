@@ -168,7 +168,9 @@ def find_child_by_type(parent, sollum_type):
             return obj
 
 
-def build_tag_bone_map(armature):
+def build_tag_bone_name_map(armature):
+    """Gets a map of bone tags in format of: TAG - BoneName"""
+
     if (armature == None):
         return None
 
@@ -181,8 +183,9 @@ def build_tag_bone_map(armature):
 
     return tag_bone_map
 
-
-def build_name_bone_map(armature, use_predefined_tags = False):
+  
+def build_bone_name_tag_map(armature, use_predefined_tags = False):
+    """Gets a map of bone tags in format of: BoneName - TAG"""
     if (armature == None):
         return None
 
@@ -202,7 +205,8 @@ def build_name_bone_map(armature, use_predefined_tags = False):
     return tag_bone_map
 
 
-def build_bone_map(armature, use_predefined_tags = False):
+def build_tag_bone_map(armature, use_predefined_tags = False):
+    """Gets a map of bone tags in format of: TAG - PoseBone"""
     if (armature == None):
         return None
 

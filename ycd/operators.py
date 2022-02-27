@@ -148,17 +148,14 @@ class SOLLUMZ_OT_clip_delete_animation(SOLLUMZ_OT_base, bpy.types.Operator):
 
 class SOLLUMZ_OT_create_clip_dictionary(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_clip_dictionary"
-    bl_label = "Create clip dictionary template"
+    bl_label = "Create from Action"
+    bl_description = "Creates a new Clip Dictionary from Action"
 
     def run(self, context):
         if len(bpy.context.selected_objects) <= 0:
             return {'FINISHED'}
 
         active_object = bpy.context.selected_objects[0]
-
-        if not isinstance(active_object.data, bpy.types.Armature):
-            return {'FINISHED'}
-
 
         create_clip_dictionary_template('Clip Dictionary', active_object.data)
 
@@ -167,7 +164,8 @@ class SOLLUMZ_OT_create_clip_dictionary(SOLLUMZ_OT_base, bpy.types.Operator):
 
 class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_clip"
-    bl_label = "Create clip"
+    bl_label = "Create a new Clip"
+    bl_description = "Create an empty Clip in selected Clip Dictionary"
 
     def run(self, context):
         if len(bpy.context.selected_objects) <= 0:
@@ -204,7 +202,8 @@ class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
 
 class SOLLUMZ_OT_create_animation(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_animation"
-    bl_label = "Create animation"
+    bl_label = "Create a new Animation"
+    bl_description = "Create an empty Animation in selected Clip Dictionary"
 
     def run(self, context):
         if len(bpy.context.selected_objects) <= 0:

@@ -1,3 +1,5 @@
+from operator import contains
+from textwrap import wrap
 import bpy
 from ..sollumz_properties import SollumType
 from ..sollumz_ui import SOLLUMZ_PT_OBJECT_PANEL
@@ -17,6 +19,30 @@ def draw_clip_properties(self, context):
         layout.operator(SOLLUMZ_OT_clip_apply_nla.bl_idname, text='Apply Clip to NLA')
         layout.operator(SOLLUMZ_OT_clip_new_animation.bl_idname, text='Add a new Animation Link')
 
+        animation_use_same_armature = True
+        animation_armatures = []
+        for animation_link in clip_properties.animations:
+            animation_properties = animation_link.animation.animation_properties
+
+            armature = animation_properties.armature
+
+            if len(animation_armatures) > 0 and armature is None:
+                animation_use_same_armature = False
+                break
+
+            if contains(animation_armatures, armature):
+                continue
+
+            animation_armatures.append(armature)
+
+            if len(animation_armatures) > 1:
+                animation_use_same_armature = False
+                break
+
+        if animation_use_same_armature is False:
+            layout.label(text="Clip animations must share the same armature.", icon="ERROR")
+
+
 def draw_animation_properties(self, context):
     obj = context.active_object
     if obj and obj.sollum_type == SollumType.ANIMATION:
@@ -24,6 +50,7 @@ def draw_animation_properties(self, context):
 
         animation_properties = obj.animation_properties
 
+        layout.prop(animation_properties, 'armature')
         layout.prop(animation_properties, 'hash')
         layout.prop(animation_properties, 'frame_count')
 
@@ -33,8 +60,6 @@ def draw_clip_dictionary_properties(self, context):
         layout = self.layout
 
         clip_dict_properties = obj.clip_dict_properties
-
-        layout.prop(clip_dict_properties, 'armature')
 
 
 class SOLLUMZ_PT_CLIP_ANIMATIONS(bpy.types.Panel):
@@ -93,6 +118,8 @@ class SOLLUMZ_PT_ANIMATION_ACTIONS(bpy.types.Panel):
         layout.prop(animation_properties, 'base_action')
         layout.prop(animation_properties, 'root_motion_location_action')
         layout.prop(animation_properties, 'root_motion_rotation_action')
+        layout.prop(animation_properties, 'camera_action')
+        layout.prop(animation_properties, 'camera_fov_action')
 
 
 class SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL(bpy.types.Panel):
@@ -112,8 +139,8 @@ class SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL(bpy.types.Panel):
 
             if active_object.sollum_type == SollumType.CLIP or active_object.sollum_type == SollumType.ANIMATION or \
                 active_object.sollum_type == SollumType.ANIMATIONS or active_object.sollum_type == SollumType.CLIPS or \
-                active_object.sollum_type == SollumType.CLIP_DICTIONARY or isinstance(active_object.data, bpy.types.Armature):
-
+                active_object.sollum_type == SollumType.CLIP_DICTIONARY or isinstance(active_object.data, bpy.types.Armature) or \
+                active_object.animation_data is not None:
                 return True
 
         return False

@@ -1,64 +1,38 @@
+from argparse import Action
+import enum
 import bpy
 from bpy.types import PoseBone
 from mathutils import Vector
+from numpy import deg2rad
 
 from ..resources.clipsdictionary import *
 from ..sollumz_properties import SollumType
 from ..tools.jenkhash import Generate
-from ..tools.blenderhelper import build_name_bone_map, build_bone_map, get_armature_obj
+from ..tools.blenderhelper import build_tag_bone_map, get_armature_obj
 from ..tools.animationhelper import *
 
 def get_name(item):
     return item.name.split('.')[0]
 
 def ensure_action_track(track_type: TrackType, action_type: ActionType):
+    """Gets valid track type for specified action type."""
     if action_type is ActionType.RootMotion:
         if track_type is TrackType.BonePosition:
             return TrackType.RootMotionPosition
         if track_type is TrackType.BoneRotation:
             return TrackType.RootMotionRotation
 
+    if action_type is ActionType.Camera:
+        if track_type is TrackType.BonePosition:
+            return TrackType.CameraPosition
+        if track_type is TrackType.BoneRotation:
+            return TrackType.CameraRotation
+
     return track_type
 
-def sequence_items_from_action(action, sequence_items, bones_map, action_type, frame_count, is_ped_animation):
-    locations_map = {}
-    rotations_map = {}
-    scales_map = {}
-
-    p_bone: PoseBone
-    for parent_tag, p_bone in bones_map.items():
-        pos_vector_path = p_bone.path_from_id('location')
-        rot_quaternion_path = p_bone.path_from_id('rotation_quaternion')
-        rot_euler_path = p_bone.path_from_id('rotation_euler')
-        scale_vector_path = p_bone.path_from_id('scale')
-
-        # Get list of per-frame data for every path
-
-        b_locations = evaluate_vector(action.fcurves, pos_vector_path, frame_count)
-        b_quaternions = evaluate_quaternion(action.fcurves, rot_quaternion_path, frame_count)
-        b_euler_quaternions = evaluate_euler_to_quaternion(action.fcurves, rot_euler_path, frame_count)
-        b_scales = evaluate_vector(action.fcurves, scale_vector_path, frame_count)
-
-        # Link them with Bone ID
-
-        if len(b_locations) > 0:
-            locations_map[parent_tag] = b_locations
-
-        # Its a bit of a edge case scenario because blender uses either
-        # euler or quaternion (I cant really understand why quaternion doesnt update with euler)
-        # So we will prefer quaternion over euler for now
-        # TODO: Theres also third rotation in blender, angles or something...
-        if len(b_quaternions) > 0:
-            rotations_map[parent_tag] = b_quaternions
-        elif len(b_euler_quaternions) > 0:
-            rotations_map[parent_tag] = b_euler_quaternions
-
-        if len(b_scales) > 0:
-            scales_map[parent_tag] = b_scales
-
-    # Transform position from local to armature space
-    for parent_tag, positions in locations_map.items():
-        p_bone = bones_map[parent_tag]
+def transform_location_to_armature_space(locations_map, bones_map):
+    for tag, positions in locations_map.items():
+        p_bone = bones_map[tag]
         bone = p_bone.bone
 
         for frame_id, position in enumerate(positions):
@@ -82,42 +56,95 @@ def sequence_items_from_action(action, sequence_items, bones_map, action_type, f
 
                 positions[frame_id] = diff_location
 
-    # Transform rotation from local to armature space
-    for parent_tag, quaternions in rotations_map.items():
-        p_bone = bones_map[parent_tag]
-        bone = p_bone.bone
+def sequence_items_from_armature_action(action, sequence_items, bones_map, action_type, frame_count, has_bones):
+    locations_map = {}
+    rotations_map = {}
+    scales_map = {}
+    cam_fov_map = {}
+
+    # Extract track data to maps
+    p_bone: PoseBone
+    for tag, p_bone in bones_map.items():
+
+        if has_bones:
+            location_path = p_bone.path_from_id('location')
+            rotation_quaternion_path = p_bone.path_from_id('rotation_quaternion')
+            rotation_euler_path = p_bone.path_from_id('rotation_euler')
+            scale_path = p_bone.path_from_id('scale')
+        else:
+            location_path = 'location'
+            rotation_quaternion_path = 'rotation_quaternion'
+            rotation_euler_path = 'rotation_euler'
+            scale_path = 'scale'
+
+        if action_type == ActionType.CameraFov:
+            fov_path = 'sensor_width'
+
+            fovs = evaluate_float(action.fcurves, 
+                fov_path, frame_count)
+            
+            if len(fovs) > 0:
+                cam_fov_map[0] = fovs
+
+        # Get list of per-frame data for every path
+
+        b_locations = evaluate_vector(action.fcurves, 
+            location_path, frame_count)
+        b_quaternions = evaluate_quaternion(action.fcurves, 
+            rotation_quaternion_path, frame_count)
+        b_euler_quaternions = evaluate_euler_to_quaternion(action.fcurves, 
+            rotation_euler_path, frame_count)
+        b_scales = evaluate_vector(action.fcurves, 
+            scale_path, frame_count)
+
+        # Link them with Bone ID
+
+        if len(b_locations) > 0:
+            locations_map[tag] = b_locations
+
+        # Its a bit of a edge case scenario because blender uses either
+        # euler or quaternion (I cant really understand why quaternion doesnt update with euler)
+        # So we will prefer quaternion over euler for now
+        # TODO: Theres also third rotation in blender, angles or something...
+        
+        if len(b_quaternions) > 0:
+            rotations_map[tag] = b_quaternions
+        elif len(b_euler_quaternions) > 0:
+            rotations_map[tag] = b_euler_quaternions
+
+        if len(b_scales) > 0:
+            scales_map[tag] = b_scales
+
+    if has_bones:
+        transform_location_to_armature_space(locations_map, bones_map)
+
+    for tag, quaternions in rotations_map.items():
+        if has_bones:
+            p_bone = bones_map[tag]
+            bone = p_bone.bone
 
         prev_quaternion = None
-        for quaternion in quaternions:
-            if p_bone.parent is not None:
-                pose_rot = Matrix.to_quaternion(bone.matrix)
-                quaternion.rotate(pose_rot)
+        for index, quaternion in enumerate(quaternions):
+            if has_bones:
+                # Transform rotation from local to armature space
+                if p_bone.parent is not None:
+                    pose_rot = Matrix.to_quaternion(bone.matrix)
+                    quaternion.rotate(pose_rot)
+
+            euler = Quaternion.to_euler(quaternion)
+
+            # For some reason camera up axis is different
+            if action_type is ActionType.Camera:
+                euler.x -= deg2rad(90)
+
+            quaternion = Euler.to_quaternion(euler)
 
             if prev_quaternion is not None:
-                # 'Flickering bug' fix - killso:
-                # This bug is caused by interpolation algorithm used in GTA
-                # which is not slerp, but straight interpolation of every value
-                # and this leads to incorrect results in cases if dot(this, next) < 0
-                # This is correct 'Quaternion Lerp' algorithm:
-                # if (Dot(start, end) >= 0f)
-                # {
-                #   result.X = (1 - amount) * start.X + amount * end.X
-                #   ...
-                # }
-                # else
-                # {
-                #   result.X = (1 - amount) * start.X - amount * end.X
-                #   ...
-                # }
-                # (Statement difference is only substracting instead of adding)
-                # But GTA algorithm doesn't have Dot check,
-                # resulting all values that are not passing this statement to 'lag' in game.
-                # (because of incorrect interpolation direction)
-                # So what we do is make all values to pass Dot(start, end) >= 0f statement
-                if Quaternion.dot(prev_quaternion, quaternion) < 0:
-                    quaternion *= -1
+                fix_quaternion_lerp(quaternion, prev_quaternion)
 
+            rotations_map[tag][index] = quaternion
             prev_quaternion = quaternion
+
     # WARNING: ANY OPERATION WITH ROTATION WILL CAUSE SIGN CHANGE. PROCEED ANYTHING BEFORE FIX.
 
     if len(locations_map) > 0:
@@ -129,6 +156,8 @@ def sequence_items_from_action(action, sequence_items, bones_map, action_type, f
     if len(scales_map) > 0:
         sequence_items[ensure_action_track(TrackType.BoneScale, action_type)] = scales_map
 
+    if len(cam_fov_map) > 0:
+        sequence_items[TrackType.CameraFov] = cam_fov_map
 
 def build_values_channel(values, uniq_values, indirect_percentage=0.1):
     values_len_percentage = len(uniq_values) / len(values)
@@ -159,14 +188,12 @@ def build_values_channel(values, uniq_values, indirect_percentage=0.1):
 
     return channel
 
-
-def sequence_item_from_frames_data(track, frames_data):
+def sequence_from_items(track_type, frames_data):
     sequence_data = Animation.SequenceDataListProperty.SequenceData()
 
-    # TODO: Would be good to put this in enum
+    track_value_type = TrackTypeValueMap[track_type]
 
-    # Location, Scale, RootMotion Position
-    if track == 0 or track == 2 or track == 5:
+    if track_value_type == TrackValueType.Vector3:
         values_x = []
         values_y = []
         values_z = []
@@ -194,8 +221,7 @@ def sequence_item_from_frames_data(track, frames_data):
             sequence_data.channels.append(build_values_channel(values_x, uniq_x))
             sequence_data.channels.append(build_values_channel(values_y, uniq_y))
             sequence_data.channels.append(build_values_channel(values_z, uniq_z))
-    # Rotation, RootMotion Rotation
-    elif track == 1 or track == 6:
+    if track_value_type == TrackValueType.Quaternion:
         values_x = []
         values_y = []
         values_z = []
@@ -229,11 +255,23 @@ def sequence_item_from_frames_data(track, frames_data):
             sequence_data.channels.append(build_values_channel(values_y, uniq_y))
             sequence_data.channels.append(build_values_channel(values_z, uniq_z))
             sequence_data.channels.append(build_values_channel(values_w, uniq_w))
+    if track_value_type == TrackValueType.Float:
+        values = frames_data
+
+        uniq = list(set(values))
+        len_uniq = len(uniq)
+
+        if len_uniq == 1:
+            channel = ChannelsListProperty.StaticFloat()
+            channel.value = frames_data[0]
+
+            sequence_data.channels.append(channel)
+        else:
+            sequence_data.channels.append(build_values_channel(values, uniq))
 
     return sequence_data
 
-
-def animation_from_object(animation_obj, bones_name_map, bones_map, is_ped_animation):
+def animation_from_object(animation_obj):
     animation = Animation()
 
     animation_properties = animation_obj.animation_properties
@@ -250,28 +288,46 @@ def animation_from_object(animation_obj, bones_name_map, bones_map, is_ped_anima
 
     sequence_items = {}
 
-    if animation_properties.base_action:
-        action = animation_properties.base_action
-        action_type = ActionType.Base
-        sequence_items_from_action(
-            action, sequence_items, bones_map, action_type, frame_count, is_ped_animation)
+    if animation_properties.armature:
+        armature_obj = get_armature_obj(animation_properties.armature)
+        
+        bones_map = build_tag_bone_map(armature_obj)
 
+        if animation_properties.base_action:
+            action = animation_properties.base_action
+            action_type = ActionType.Base
+            sequence_items_from_armature_action(
+                action, sequence_items, bones_map, action_type, frame_count, True)
+
+    bones_map = { 0: ''}
     if animation_properties.root_motion_location_action:
         action = animation_properties.root_motion_location_action
         action_type = ActionType.RootMotion
 
         animation.unknown10 |= AnimationFlag.RootMotion
-        sequence_items_from_action(
-            action, sequence_items, bones_map, action_type, frame_count, is_ped_animation)
+        sequence_items_from_armature_action(
+            action, sequence_items, bones_map, action_type, frame_count, False)
 
-    # TODO: Figure out root motion rotation
-    # if animation_properties.root_motion_rotation_action:
-        # action = animation_properties.root_motion_rotation_action
-        # action_type = ActionType.RootMotion
+    if animation_properties.root_motion_rotation_action:
+        action = animation_properties.root_motion_rotation_action
+        action_type = ActionType.RootMotion
 
+        # TODO: Figure out root motion rotation
         # animation.unknown10 |= AnimationFlag.RootMotion
         # sequence_items_from_action(
-        #     action, sequence_items, bones_map, action_type, frames_count, is_ped_animation)
+        #     action, sequence_items, bones_map, action_type, frames_count, False)
+
+    if animation_properties.camera_action:
+        action = animation_properties.camera_action
+        action_type = ActionType.Camera
+
+        sequence_items_from_armature_action(action, sequence_items, bones_map, action_type, frame_count, False)
+
+    if animation_properties.camera_fov_action:
+        action = animation_properties.camera_fov_action
+        action_type = ActionType.CameraFov
+
+        sequence_items_from_armature_action(action, sequence_items, bones_map, action_type, frame_count, False)
 
     sequence = Animation.SequenceListProperty.Sequence()
     sequence.frame_count = frame_count
@@ -279,7 +335,7 @@ def animation_from_object(animation_obj, bones_name_map, bones_map, is_ped_anima
 
     for track, bones_data in sorted(sequence_items.items()):
         for bone_id, frames_data in sorted(bones_data.items()):
-            sequence_data = sequence_item_from_frames_data(track, frames_data)
+            sequence_data = sequence_from_items(track, frames_data)
 
             seq_bone_id = Animation.BoneIdListProperty.BoneId()
             seq_bone_id.bone_id = bone_id
@@ -295,7 +351,6 @@ def animation_from_object(animation_obj, bones_name_map, bones_map, is_ped_anima
     animation.unknown10 = animation.unknown10.value
 
     return animation
-
 
 def clip_from_object(clip_obj):
     clip_properties = clip_obj.clip_properties
@@ -341,22 +396,9 @@ def clip_from_object(clip_obj):
 
     return clip
 
-
+  
 def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
     clip_dictionary = ClipsDictionary()
-
-    armature = obj.clip_dict_properties.armature
-    armature_obj = get_armature_obj(armature)
-
-    bones_name_map = build_name_bone_map(armature_obj, export_settings.use_predefined_tags)
-    bones_map = build_bone_map(armature_obj, export_settings.use_predefined_tags)
-
-    is_ped_animation = False
-
-    for p_bone in armature_obj.pose.bones:
-        if is_ped_bone_tag(p_bone.bone.bone_properties.tag):
-            is_ped_animation = True
-            break
 
     animations_obj = None
     clips_obj = None
@@ -368,7 +410,7 @@ def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
             clips_obj = child_obj
 
     for animation_obj in animations_obj.children:
-        animation = animation_from_object(animation_obj, bones_name_map, bones_map, is_ped_animation)
+        animation = animation_from_object(animation_obj)
 
         clip_dictionary.animations.append(animation)
 
@@ -378,7 +420,6 @@ def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
         clip_dictionary.clips.append(clip)
 
     return clip_dictionary
-
 
 def export_ycd(exportop, obj, filepath, export_settings):
     clip_dictionary_from_object(exportop, obj, filepath, export_settings).write_xml(filepath)
