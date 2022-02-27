@@ -342,14 +342,14 @@ def clip_from_object(clip_obj):
     return clip
 
 
-def clip_dictionary_from_object(exportop, obj, exportpath, export_settings=None):
+def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
     clip_dictionary = ClipsDictionary()
 
     armature = obj.clip_dict_properties.armature
     armature_obj = get_armature_obj(armature)
 
-    bones_name_map = build_name_bone_map(armature_obj)
-    bones_map = build_bone_map(armature_obj)
+    bones_name_map = build_name_bone_map(armature_obj, export_settings.use_predefined_tags)
+    bones_map = build_bone_map(armature_obj, export_settings.use_predefined_tags)
 
     is_ped_animation = False
 

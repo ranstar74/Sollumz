@@ -1,4 +1,5 @@
 import bpy
+from ..tools.bonehelper import *
 from mathutils import Vector
 
 
@@ -181,7 +182,7 @@ def build_tag_bone_map(armature):
     return tag_bone_map
 
 
-def build_name_bone_map(armature):
+def build_name_bone_map(armature, use_predefined_tags = False):
     if (armature == None):
         return None
 
@@ -190,12 +191,18 @@ def build_name_bone_map(armature):
 
     tag_bone_map = {}
     for pose_bone in armature.pose.bones:
-        tag_bone_map[pose_bone.name] = pose_bone.bone.bone_properties.tag
+        if use_predefined_tags:
+            tag = try_get_bone_tag(pose_bone.name)
+
+            if tag != -1:
+                tag_bone_map[pose_bone.name] = tag
+        else:
+            tag_bone_map[pose_bone.name] = pose_bone.bone.bone_properties.tag
 
     return tag_bone_map
 
 
-def build_bone_map(armature):
+def build_bone_map(armature, use_predefined_tags = False):
     if (armature == None):
         return None
 
@@ -204,7 +211,13 @@ def build_bone_map(armature):
 
     tag_bone_map = {}
     for pose_bone in armature.pose.bones:
-        tag_bone_map[pose_bone.bone.bone_properties.tag] = pose_bone
+        if use_predefined_tags:
+            tag = try_get_bone_tag(pose_bone.name)
+
+            if tag != -1:
+                tag_bone_map[tag] = pose_bone
+        else:
+            tag_bone_map[pose_bone.bone.bone_properties.tag] = pose_bone
 
     return tag_bone_map
 
