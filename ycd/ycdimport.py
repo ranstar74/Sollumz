@@ -344,7 +344,7 @@ def clip_to_obj(clip, animations_map, animations_obj_map):
     return clip_obj
 
 
-def create_clip_dictionary_template(name, armature):
+def create_clip_dictionary(name):
     clip_dictionary_obj = create_anim_obj(SollumType.CLIP_DICTIONARY)
     clips_obj = create_anim_obj(SollumType.CLIPS)
     animations_obj = create_anim_obj(SollumType.ANIMATIONS)
@@ -358,7 +358,7 @@ def create_clip_dictionary_template(name, armature):
 
 
 def clip_dictionary_to_obj(clip_dictionary, name, armature, armature_obj):
-    clip_dictionary_obj, clips_obj, animations_obj = create_clip_dictionary_template(name, armature)
+    clip_dictionary_obj, clips_obj, animations_obj = create_clip_dictionary(name, armature)
 
     animations_map = {}
     animations_obj_map = {}

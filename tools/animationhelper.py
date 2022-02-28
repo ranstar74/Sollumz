@@ -1,6 +1,10 @@
 from sys import float_info
+import bpy
 from mathutils import Quaternion, Vector, Euler
 from enum import IntFlag, IntEnum
+from ..sollumz_properties import SollumType
+from ..tools.blenderhelper import find_child_by_type
+from ..ycd.ycdimport import create_anim_obj
 
 class AnimationFlag(IntFlag):
     Default = 0
@@ -163,3 +167,68 @@ def fix_quaternion_lerp(quaternion, previous_quaternion):
     # So what we do is make all values to pass Dot(start, end) >= 0f statement
     if Quaternion.dot(previous_quaternion, quaternion) < 0:
         quaternion *= -1
+
+
+def create_animation():
+    animations_obj = get_active_animations_obj()
+
+    if animations_obj != None:
+        animation_obj = create_anim_obj(SollumType.ANIMATION)
+
+        animation_obj.parent = animations_obj
+
+        return animation_obj
+
+
+def create_clip():
+    active_object = bpy.context.selected_objects[0]
+
+    clips_obj = None
+
+    if active_object.sollum_type == SollumType.CLIP:
+        clips_obj = active_object.parent
+    elif active_object.sollum_type == SollumType.ANIMATION:
+        clip_dictionary_obj = active_object.parent.parent
+
+        clips_obj = find_child_by_type(clip_dictionary_obj, SollumType.CLIPS)
+    elif active_object.sollum_type == SollumType.CLIPS:
+        clips_obj = active_object
+    elif active_object.sollum_type == SollumType.ANIMATIONS:
+        clip_dictionary_obj = active_object.parent
+
+        clips_obj = find_child_by_type(clip_dictionary_obj, SollumType.CLIPS)
+    elif active_object.sollum_type == SollumType.CLIP_DICTIONARY:
+        clip_dictionary_obj = active_object
+
+        clips_obj = find_child_by_type(clip_dictionary_obj, SollumType.CLIPS)
+
+    if clips_obj != None:
+        animation_obj = create_anim_obj(SollumType.CLIP)
+
+        animation_obj.parent = clips_obj   
+
+        return animation_obj 
+
+
+def get_active_animations_obj():
+    active_object = bpy.context.selected_objects[0]
+    animations_obj = None
+
+    if active_object.sollum_type == SollumType.CLIP:
+        clip_dictionary_obj = active_object.parent.parent
+
+        animations_obj = find_child_by_type(clip_dictionary_obj, SollumType.ANIMATIONS)
+    elif active_object.sollum_type == SollumType.ANIMATION:
+        animations_obj = active_object.parent
+    elif active_object.sollum_type == SollumType.CLIPS:
+        clip_dictionary_obj = active_object.parent
+
+        animations_obj = find_child_by_type(clip_dictionary_obj, SollumType.ANIMATIONS)
+    elif active_object.sollum_type == SollumType.ANIMATIONS:
+        animations_obj = active_object
+    elif active_object.sollum_type == SollumType.CLIP_DICTIONARY:
+        clip_dictionary_obj = active_object
+
+        animations_obj = find_child_by_type(clip_dictionary_obj, SollumType.ANIMATIONS)
+    
+    return animations_obj

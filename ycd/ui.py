@@ -1,8 +1,12 @@
+from ast import operator
 from operator import contains
 from textwrap import wrap
 import bpy
+
+from ..ydr.ui import SOLLUMZ_PT_DRAWABLE_TOOL_PANEL
+
 from ..sollumz_properties import SollumType
-from ..sollumz_ui import SOLLUMZ_PT_OBJECT_PANEL
+from ..sollumz_ui import SOLLUMZ_PT_OBJECT_PANEL, SOLLUMZ_UL_armature_list
 from .operators import *
 
 def draw_clip_properties(self, context):
@@ -131,41 +135,85 @@ class SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL(bpy.types.Panel):
     bl_options = {'DEFAULT_CLOSED'}
     bl_order = 1
 
-    @classmethod
-    def poll(cls, context):
-
-        if len(bpy.context.selected_objects) > 0:
-            active_object = bpy.context.selected_objects[0]
-
-            if active_object.sollum_type == SollumType.CLIP or active_object.sollum_type == SollumType.ANIMATION or \
-                active_object.sollum_type == SollumType.ANIMATIONS or active_object.sollum_type == SollumType.CLIPS or \
-                active_object.sollum_type == SollumType.CLIP_DICTIONARY or isinstance(active_object.data, bpy.types.Armature) or \
-                active_object.animation_data is not None:
-                return True
-
-        return False
-
     def draw_header(self, context):
         self.layout.label(text="", icon="ARMATURE_DATA")
 
     def draw(self, context):
         layout = self.layout
+        
+        layout.operator(SOLLUMZ_OT_create_clip_dictionary.bl_idname)
 
+        if len(bpy.context.selected_objects) > 0:
+            active_object = bpy.context.selected_objects[0]
+            if active_object.sollum_type == SollumType.CLIP or active_object.sollum_type == SollumType.ANIMATION or \
+                active_object.sollum_type == SollumType.ANIMATIONS or active_object.sollum_type == SollumType.CLIPS or \
+                active_object.sollum_type == SollumType.CLIP_DICTIONARY:
+                    
+                layout.operator(SOLLUMZ_OT_create_clip.bl_idname)
+                layout.operator(SOLLUMZ_OT_create_animation.bl_idname)
+
+
+class SOLLUMZ_PT_autogen_clip_from_action(bpy.types.Panel):
+    bl_label = "Create Clip From Action"
+    bl_idname = "SOLLUMZ_PT_autogen_clip_from_action"
+    bl_category = "Sollumz Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL.bl_idname
+
+    @classmethod
+    def poll(cls, context):
         if len(bpy.context.selected_objects) > 0:
             active_object = bpy.context.selected_objects[0]
 
             if active_object.sollum_type == SollumType.CLIP or active_object.sollum_type == SollumType.ANIMATION or \
                 active_object.sollum_type == SollumType.ANIMATIONS or active_object.sollum_type == SollumType.CLIPS or \
                 active_object.sollum_type == SollumType.CLIP_DICTIONARY:
-                    layout.operator(SOLLUMZ_OT_create_clip.bl_idname)
-                    layout.operator(SOLLUMZ_OT_create_animation.bl_idname)
+                return True
 
-                    if (active_object.sollum_type == SollumType.ANIMATION):
-                        layout.operator(SOLLUMZ_OT_animation_fill.bl_idname)
-            else:
-                layout.operator(SOLLUMZ_OT_create_clip_dictionary.bl_idname)
-        else:
-            layout.operator(SOLLUMZ_OT_create_clip_dictionary.bl_idname)
+        return False
+
+    def draw_header(self, context):
+        self.layout.label(text="", icon="ANIM")
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.template_list(SOLLUMZ_UL_armature_list.bl_idname, "", 
+            bpy.data, "armatures", context.scene, "autogen_selected_armature")
+        
+        layout.prop(context.scene, 'autogen_name', text="Name")
+        layout.operator(SOLLUMZ_OT_autogen_clip_from_action.bl_idname)
+
+
+class SOLLUMZ_PT_action_tools(bpy.types.Panel):
+    bl_label = "Action Tools"
+    bl_idname = "SOLLUMZ_PT_action_tools"
+    bl_category = "Sollumz Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL.bl_idname
+
+    @classmethod
+    def poll(cls, context):
+        if len(bpy.context.selected_objects) > 0:
+            active_object = bpy.context.selected_objects[0]
+
+            if isinstance(active_object.data, bpy.types.Armature) or \
+                active_object.animation_data is not None:
+                return True
+
+        return False
+
+    def draw_header(self, context):
+        self.layout.label(text="", icon="ANIM")
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator(SOLLUMZ_OT_separate_root_motion.bl_idname)
 
 
 def register():

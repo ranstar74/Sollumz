@@ -1,3 +1,4 @@
+from mimetypes import init
 import bpy
 from ..sollumz_properties import SollumType
 
@@ -73,9 +74,20 @@ def register():
     bpy.types.Object.clip_dict_properties = bpy.props.PointerProperty(type=ClipDictionary)
     bpy.types.Object.clip_properties = bpy.props.PointerProperty(type=ClipProperties)
     bpy.types.Object.animation_properties = bpy.props.PointerProperty(type=AnimationProperties)
+    bpy.types.Scene.autogen_selected_armature = bpy.props.IntProperty(
+        name="Armature",
+        description="Armature on which the animation will be applied",
+        default=-1
+    )
+    bpy.types.Scene.autogen_name = bpy.props.StringProperty(
+        name="Name",
+        description="Name of the clip to create"
+    )
 
 
 def unregister():
     del bpy.types.Object.clip_dict_properties
     del bpy.types.Object.clip_properties
     del bpy.types.Object.animation_properties
+    del bpy.types.Scene.autogen_selected_armature
+    del bpy.types.Scene.autogen_name
