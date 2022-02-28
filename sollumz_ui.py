@@ -123,7 +123,11 @@ class SOLLUMZ_UL_armature_list(bpy.types.UIList):
             row = layout.row()
 
             # Armature is contained in 'skel' object, so we need its parent (which is pack:/... or ped root..)
-            armature_parent = get_armature_obj(item).parent
+            # So we get highest object in the hierarchy
+            armature_obj = get_armature_obj(item)
+            armature_parent = armature_obj
+            while armature_parent.parent is not None:
+                armature_parent = armature_parent.parent
 
             row.label(text=F'{armature_parent.name} - {item.name}',
                       icon="OUTLINER_DATA_ARMATURE")
