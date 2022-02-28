@@ -1,3 +1,7 @@
+from argparse import Action
+from email.mime import base
+from multiprocessing.sharedctypes import Value
+from operator import index
 import bpy
 
 from ..tools.animationhelper import create_animation, create_clip
@@ -186,7 +190,10 @@ class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
         armature_obj = get_armature_obj(armature)
         base_action = armature_obj.animation_data.action
         
+        # TODO: Detect track type
         animation_properties.base_action = base_action
+        animation_properties.root_motion_location_action = bpy.data.actions.get(base_action.name + '_root_motion_position')
+
         animation_properties.frame_count = base_action.frame_range.y - base_action.frame_range.x + 1
         animation_properties.hash = name + '_anim'
         animation_properties.armature = armature
@@ -217,6 +224,43 @@ class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
         if len(bpy.context.selected_objects) <= 0:
             return {'FINISHED'}
 
+        armature = bpy.data.armatures[context.scene.autogen_selected_armature]
+        armature_obj = get_armature_obj(armature)
+
+        base_action: bpy.types.Action
+        base_action = armature_obj.animation_data.action
+
+        path = 'pose.bones["SKEL_ROOT"].location'
+
+        root_curve_x = base_action.fcurves.find(path, index=0)
+        root_curve_y = base_action.fcurves.find(path, index=1)
+        root_curve_z = base_action.fcurves.find(path, index=2)
+
+        if root_curve_x is None and root_curve_y is None and root_curve_z is None:
+            self.report({'ERROR'}, 'Root bone keys not found.')
+            return {'FINISHED'}
+
+        root_motion_position = bpy.data.actions.new(base_action.name + '_root_motion_position')
+
+        frame_count = (int) (base_action.frame_range.y - base_action.frame_range.x + 1)
+
+        # Why i cant just copy it? Great python...
+        pos_curve_x = root_motion_position.fcurves.new(path, index=0)
+        pos_curve_y = root_motion_position.fcurves.new(path, index=1)
+        pos_curve_z = root_motion_position.fcurves.new(path, index=2)
+
+        for frame in range(frame_count):
+            pos_curve_x.keyframe_points.insert(frame=frame, value=root_curve_x.evaluate(frame))
+            pos_curve_y.keyframe_points.insert(frame=frame, value=root_curve_y.evaluate(frame))
+            pos_curve_z.keyframe_points.insert(frame=frame, value=root_curve_z.evaluate(frame))
+
+        pos_curve_x.update()
+        pos_curve_y.update()
+        pos_curve_z.update()
+
+        base_action.fcurves.remove(root_curve_x)
+        base_action.fcurves.remove(root_curve_y)
+        base_action.fcurves.remove(root_curve_z)
 
 class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_clip"
