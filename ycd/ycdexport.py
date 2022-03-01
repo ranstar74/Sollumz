@@ -271,7 +271,7 @@ def sequence_from_items(track_type, frames_data):
 
     return sequence_data
 
-def animation_from_object(animation_obj, use_predefined_tags):
+def animation_from_object(exportop, animation_obj, use_predefined_tags):
     animation = Animation()
 
     animation_properties = animation_obj.animation_properties
@@ -352,7 +352,7 @@ def animation_from_object(animation_obj, use_predefined_tags):
 
     return animation
 
-def clip_from_object(clip_obj):
+def clip_from_object(exportop, clip_obj):
     clip_properties = clip_obj.clip_properties
 
     is_single_animation = len(clip_properties.animations) == 1
@@ -360,6 +360,11 @@ def clip_from_object(clip_obj):
     if is_single_animation:
         clip = ClipsListProperty.ClipAnimation()
         clip_animation_property = clip_properties.animations[0]
+
+        if clip_animation_property.animation is None:
+            exportop.report({'ERROR'}, F"{clip_properties.name} doens't have all animation link's setup correctly.")
+            return
+
         animation_properties = clip_animation_property.animation.animation_properties
 
         animation_duration = animation_properties.frame_count / bpy.context.scene.render.fps
@@ -376,6 +381,10 @@ def clip_from_object(clip_obj):
 
         for clip_animation_property in clip_properties.animations:
             clip_animation = ClipAnimationsListProperty.ClipAnimation()
+
+            if clip_animation_property.animation is None:
+                exportop.report({'ERROR'}, F"{clip_properties.name} doens't have all animation link's setup correctly.")
+                return
 
             animation_properties = clip_animation_property.animation.animation_properties
 
@@ -403,23 +412,36 @@ def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
     animations_obj = None
     clips_obj = None
 
+    if len(obj.children) != 2:
+        exportop.report({'ERROR'}, F"{obj.name} is not a valid clip dictionary.")
+        return
+
     for child_obj in obj.children:
         if child_obj.sollum_type == SollumType.ANIMATIONS:
             animations_obj = child_obj
         elif child_obj.sollum_type == SollumType.CLIPS:
             clips_obj = child_obj
 
-    for animation_obj in animations_obj.children:
-        animation = animation_from_object(animation_obj, export_settings.use_predefined_tags)
+    if animations_obj is None or clips_obj is None:
+        exportop.report({'ERROR'}, F"{obj.name} is not a valid clip dictionary.")
+        return    
 
-        clip_dictionary.animations.append(animation)
+    for animation_obj in animations_obj.children:
+        animation = animation_from_object(exportop, animation_obj, export_settings.use_predefined_tags)
+
+        if animation is not None:
+            clip_dictionary.animations.append(animation)
 
     for clip_obj in clips_obj.children:
-        clip = clip_from_object(clip_obj)
+        clip = clip_from_object(exportop, clip_obj)
 
-        clip_dictionary.clips.append(clip)
+        if clip is not None:
+            clip_dictionary.clips.append(clip)
 
     return clip_dictionary
 
 def export_ycd(exportop, obj, filepath, export_settings):
-    clip_dictionary_from_object(exportop, obj, filepath, export_settings).write_xml(filepath)
+    cd = clip_dictionary_from_object(exportop, obj, filepath, export_settings)
+
+    if cd is not None:
+        cd.write_xml(filepath)

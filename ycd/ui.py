@@ -26,6 +26,9 @@ def draw_clip_properties(self, context):
         animation_use_same_armature = True
         animation_armatures = []
         for animation_link in clip_properties.animations:
+            if animation_link.animation is None:
+                continue
+
             animation_properties = animation_link.animation.animation_properties
 
             armature = animation_properties.armature

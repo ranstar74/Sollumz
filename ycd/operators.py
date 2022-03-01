@@ -262,6 +262,7 @@ class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
         base_action.fcurves.remove(root_curve_y)
         base_action.fcurves.remove(root_curve_z)
 
+
 class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_clip"
     bl_label = "Create a new Clip"
@@ -286,16 +287,5 @@ class SOLLUMZ_OT_create_animation(SOLLUMZ_OT_base, bpy.types.Operator):
             return {'FINISHED'}
 
         create_animation()
-
-        return {'FINISHED'}
-
-
-class SOLLUMZ_OT_animation_fill(SOLLUMZ_OT_base, bpy.types.Operator):
-    bl_idname = "sollumz.animation_fill"
-    bl_label = "Fill animation data"
-
-    def run(self, context):
-        if len(bpy.context.selected_objects) <= 0:
-            return {'FINISHED'}
 
         return {'FINISHED'}
