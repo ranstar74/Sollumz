@@ -271,7 +271,7 @@ def sequence_from_items(track_type, frames_data):
 
     return sequence_data
 
-def animation_from_object(animation_obj):
+def animation_from_object(animation_obj, use_predefined_tags):
     animation = Animation()
 
     animation_properties = animation_obj.animation_properties
@@ -291,7 +291,7 @@ def animation_from_object(animation_obj):
     if animation_properties.armature:
         armature_obj = get_armature_obj(animation_properties.armature)
         
-        bones_map = build_tag_bone_map(armature_obj)
+        bones_map = build_tag_bone_map(armature_obj, use_predefined_tags)
 
         if animation_properties.base_action:
             action = animation_properties.base_action
@@ -410,7 +410,7 @@ def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
             clips_obj = child_obj
 
     for animation_obj in animations_obj.children:
-        animation = animation_from_object(animation_obj)
+        animation = animation_from_object(animation_obj, export_settings.use_predefined_tags)
 
         clip_dictionary.animations.append(animation)
 
