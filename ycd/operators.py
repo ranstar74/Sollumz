@@ -171,7 +171,7 @@ class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
         if len(bpy.context.selected_objects) <= 0:
             return {'FINISHED'}
         
-        name = context.scene.autogen_name
+        name = context.scene.autogen_name.lower()
 
         if name is '':
             self.report({'ERROR'}, 'Clip name can\'t be empy.')
