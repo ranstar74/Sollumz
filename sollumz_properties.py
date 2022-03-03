@@ -568,11 +568,6 @@ class SollumzExportSettings(bpy.types.PropertyGroup):
         description="Exports objects with the parent empty object's transforms applied to the vertices",
         default=True
     )
-    use_predefined_tags: bpy.props.BoolProperty(
-        name="Use Predefined Tags",
-        description="Use predefined bone tags. Useful for cases when armature was imported not using sollumz",
-        default=False
-    )
     export_with_hi: bpy.props.BoolProperty(
         name="Export With _hi",
         description="Exports fragment with _hi file.",
