@@ -209,6 +209,35 @@ class SOLLUMZ_PT_CREATE_DRAWABLE_PANEL(bpy.types.Panel):
         row.prop(context.scene, "create_seperate_objects")
 
 
+class SOLLUMZ_PT_GENERATE_BONE_TAGS_PANEL(bpy.types.Panel):
+    bl_label = "Generate Bone Tags"
+    bl_idname = "SOLLUMZ_PT_GENERATE_BONE_TAGS_PANEL"
+    bl_category = "Sollumz Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = SOLLUMZ_PT_DRAWABLE_TOOL_PANEL.bl_idname
+
+    @classmethod
+    def poll(cls, context):
+        if len(bpy.context.selected_objects) > 0:
+            active_object = bpy.context.selected_objects[0]
+
+            if isinstance(active_object.data, bpy.types.Armature) or \
+                active_object.animation_data is not None:
+                return True
+
+        return False
+
+    def draw_header(self, context):
+        self.layout.label(text="", icon="BONE_DATA")
+
+    def draw(self, context):
+        layout = self.layout
+
+        layout.operator(SOLLUMZ_OT_generate_bone_tags.bl_idname)
+
+
 class SOLLUMZ_PT_CREATE_LIGHT_PANEL(bpy.types.Panel):
     bl_label = "Create Lights"
     bl_idname = "SOLLUMZ_PT_CREATE_LIGHT_PANEL"

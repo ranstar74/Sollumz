@@ -2,11 +2,33 @@ from ..sollumz_helper import SOLLUMZ_OT_base
 from ..sollumz_properties import SOLLUMZ_UI_NAMES, LightType, SollumType, TimeFlags
 from ..sollumz_operators import SelectTimeFlagsRange, ClearTimeFlags
 from ..ydr.shader_materials import create_shader, create_tinted_shader_graph, shadermats
+from ..tools.bonehelper import *
 from ..tools.drawablehelper import *
 from ..resources.shader import ShaderManager
 import traceback
 import bpy
 
+
+class SOLLUMZ_OT_generate_bone_tags(SOLLUMZ_OT_base, bpy.types.Operator):
+    """Generate bone tags on selected armature."""
+    bl_idname = "sollumz.generate_bone_tags"
+    bl_label = "Generate Bone Tags"
+    bl_description = "Automatically generates bone tags on selected armature"
+    bl_action = bl_label
+    bl_update_view = True
+
+    def run(self, context):
+        armature = bpy.context.selected_objects[0]
+        
+        for bone in armature.data.bones:
+            # Root bone always has no tag
+            if bone.parent is None:
+                tag = 0
+            else:
+                tag = try_get_bone_tag(bone.name)
+
+            bone.bone_properties.tag = tag
+        
 
 class SOLLUMZ_OT_create_drawable(SOLLUMZ_OT_base, bpy.types.Operator):
     """Create a sollumz drawable of the selected type."""
