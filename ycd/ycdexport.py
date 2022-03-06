@@ -1,4 +1,5 @@
 from argparse import Action
+from distutils.ccompiler import new_compiler
 from bpy.types import PoseBone
 from mathutils import Vector
 from numpy import deg2rad
@@ -38,7 +39,7 @@ def transform_location_to_armature_space(locations_map, bones_map, armature_obj)
             if bone.parent is not None:
                 parent_mat = bone.parent.matrix_local.inverted()
             elif armature_obj is not None:
-                parent_mat = armature_obj.matrix_world  # .inverted()
+                parent_mat = armature_obj.matrix_world.inverted()
 
             if parent_mat is not None:
                 mat = parent_mat @ bone.matrix_local
@@ -129,8 +130,12 @@ def sequence_items_from_armature_action(action, sequence_items, bones_map, actio
             if has_bones:
                 # Transform rotation from local to armature space
                 if p_bone.parent is not None:
-                    pose_rot = Matrix.to_quaternion(bone.matrix)
-                    quaternion.rotate(pose_rot)
+                    parent_mat = bone.matrix
+                elif armature_obj is not None:
+                    parent_mat = armature_obj.matrix_world
+
+                if parent_mat is not None:
+                    quaternion.rotate(Matrix.to_quaternion(parent_mat))
 
             euler = Quaternion.to_euler(quaternion)
 
