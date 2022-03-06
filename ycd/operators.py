@@ -173,7 +173,7 @@ class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
         
         name = context.scene.autogen_name.lower()
 
-        if name is '':
+        if name == '':
             self.report({'ERROR'}, 'Clip name can\'t be empy.')
             return {'FINISHED'}
 
@@ -224,12 +224,12 @@ class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
         if len(bpy.context.selected_objects) <= 0:
             return {'FINISHED'}
 
-        armature = bpy.data.armatures[context.scene.autogen_selected_armature]
-        armature_obj = get_armature_obj(armature)
+        armature_obj = bpy.context.selected_objects[0]
 
         base_action: bpy.types.Action
         base_action = armature_obj.animation_data.action
 
+        # Won't work on anything other than peds but whatever
         path = 'pose.bones["SKEL_ROOT"].location'
 
         root_curve_x = base_action.fcurves.find(path, index=0)
@@ -248,6 +248,11 @@ class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
         pos_curve_x = root_motion_position.fcurves.new(path, index=0)
         pos_curve_y = root_motion_position.fcurves.new(path, index=1)
         pos_curve_z = root_motion_position.fcurves.new(path, index=2)
+
+        group = root_motion_position.groups.new('SKEL_ROOT-5')
+        pos_curve_x.group = group
+        pos_curve_y.group = group
+        pos_curve_z.group = group
 
         for frame in range(frame_count):
             pos_curve_x.keyframe_points.insert(frame=frame, value=root_curve_x.evaluate(frame))
