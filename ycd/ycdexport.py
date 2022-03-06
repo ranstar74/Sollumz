@@ -1,9 +1,8 @@
 from argparse import Action
-import enum
-import bpy
 from bpy.types import PoseBone
 from mathutils import Vector
 from numpy import deg2rad
+import bpy
 
 from ..resources.clipsdictionary import *
 from ..sollumz_properties import SollumType
@@ -30,16 +29,19 @@ def ensure_action_track(track_type: TrackType, action_type: ActionType):
 
     return track_type
 
-def transform_location_to_armature_space(locations_map, bones_map):
+def transform_location_to_armature_space(locations_map, bones_map, armature_obj):
     for tag, positions in locations_map.items():
         p_bone = bones_map[tag]
         bone = p_bone.bone
 
         for frame_id, position in enumerate(positions):
-            mat = bone.matrix_local
+            if bone.parent is not None:
+                parent_mat = bone.parent.matrix_local.inverted()
+            elif armature_obj is not None:
+                parent_mat = armature_obj.matrix_world  # .inverted()
 
-            if (bone.parent != None):
-                mat = bone.parent.matrix_local.inverted() @ bone.matrix_local
+            if parent_mat is not None:
+                mat = parent_mat @ bone.matrix_local
 
                 mat_decomposed = mat.decompose()
 
@@ -48,15 +50,14 @@ def transform_location_to_armature_space(locations_map, bones_map):
 
                 position.rotate(bone_rotation)
 
-                diff_location = Vector((
-                    (position.x + bone_location.x),
-                    (position.y + bone_location.y),
-                    (position.z + bone_location.z),
-                ))
+                x = position.x + bone_location.x
+                y = position.y + bone_location.y
+                z = position.z + bone_location.z
+                new_location = Vector((x, y, z))
 
-                positions[frame_id] = diff_location
+                positions[frame_id] = new_location
 
-def sequence_items_from_armature_action(action, sequence_items, bones_map, action_type, frame_count, has_bones):
+def sequence_items_from_armature_action(action, sequence_items, bones_map, action_type, frame_count, has_bones, armature_obj):
     locations_map = {}
     rotations_map = {}
     scales_map = {}
@@ -116,7 +117,7 @@ def sequence_items_from_armature_action(action, sequence_items, bones_map, actio
             scales_map[tag] = b_scales
 
     if has_bones:
-        transform_location_to_armature_space(locations_map, bones_map)
+        transform_location_to_armature_space(locations_map, bones_map, armature_obj)
 
     for tag, quaternions in rotations_map.items():
         if has_bones:
@@ -290,23 +291,26 @@ def animation_from_object(exportop, animation_obj):
 
     if animation_properties.armature:
         armature_obj = get_armature_obj(animation_properties.armature)
-        
         bones_map = build_tag_bone_map(armature_obj)
 
+    if armature_obj:
         if animation_properties.base_action:
             action = animation_properties.base_action
             action_type = ActionType.Base
             sequence_items_from_armature_action(
-                action, sequence_items, bones_map, action_type, frame_count, True)
+                action, sequence_items, bones_map, action_type, frame_count, True, armature_obj)
 
-    bones_map = { 0: ''}
+    if armature_obj is None:
+        bones_map = { 0: ''}
+    has_bones = armature_obj is not None
+    
     if animation_properties.root_motion_location_action:
         action = animation_properties.root_motion_location_action
         action_type = ActionType.RootMotion
 
         animation.unknown10 |= AnimationFlag.RootMotion
         sequence_items_from_armature_action(
-            action, sequence_items, bones_map, action_type, frame_count, False)
+            action, sequence_items, bones_map, action_type, frame_count, has_bones, armature_obj)
 
     if animation_properties.root_motion_rotation_action:
         action = animation_properties.root_motion_rotation_action
@@ -315,7 +319,7 @@ def animation_from_object(exportop, animation_obj):
         # TODO: Figure out root motion rotation
         # animation.unknown10 |= AnimationFlag.RootMotion
         # sequence_items_from_action(
-        #     action, sequence_items, bones_map, action_type, frames_count, False)
+        #     action, sequence_items, bones_map, action_type, frames_count, has_bones, armature_obj)
 
     if animation_properties.camera_action:
         action = animation_properties.camera_action
@@ -405,7 +409,6 @@ def clip_from_object(exportop, clip_obj):
 
     return clip
 
-  
 def clip_dictionary_from_object(exportop, obj, exportpath, export_settings):
     clip_dictionary = ClipsDictionary()
 
