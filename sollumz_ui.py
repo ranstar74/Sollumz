@@ -160,8 +160,9 @@ class SOLLUMZ_PT_import_animation(bpy.types.Panel):
 
         armature_list_box = layout.box()
 
-        armature_list_box.label(text="Target skeleton")
+        armature_list_box.label(text="Default armature")
 
+        operator.import_settings.selected_armature = 0
         armature_list_box.template_list(SOLLUMZ_UL_armature_list.bl_idname, "",
                                         bpy.data, "armatures", operator.import_settings, "selected_armature")
 

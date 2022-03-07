@@ -230,7 +230,7 @@ class SOLLUMZ_PT_GENERATE_BONE_TAGS_PANEL(bpy.types.Panel):
         return False
 
     def draw_header(self, context):
-        self.layout.label(text="", icon="BONE_DATA")
+        self.layout.label(text="", icon="CONSTRAINT_BONE")
 
     def draw(self, context):
         layout = self.layout

@@ -17,18 +17,18 @@ class SOLLUMZ_OT_clip_apply_nla(SOLLUMZ_OT_base, bpy.types.Operator):
 
     def run(self, context):
         if len(bpy.context.selected_objects) <= 0:
-            return {'FINISHED'}
+            return False
 
         active_object = bpy.context.selected_objects[0]
 
         if active_object.sollum_type != SollumType.CLIP:
-            return {'FINISHED'}
+            return False
 
         clip_dictionary = active_object.parent.parent
         armature = get_armature_obj(clip_dictionary.clip_dict_properties.armature)
 
         if armature is None:
-            return {'FINISHED'}
+            return False
 
         clip_properties = active_object.clip_properties
 
@@ -67,8 +67,7 @@ class SOLLUMZ_OT_clip_apply_nla(SOLLUMZ_OT_base, bpy.types.Operator):
                     'start_frames': start_frames,
                     'end_frames': end_frames,
                     'visual_frame_count': visual_frame_count,
-                    'action': action,
-                })
+                    'action': action})
 
         if armature.animation_data is None:
             armature.animation_data_create()
@@ -105,7 +104,7 @@ class SOLLUMZ_OT_clip_apply_nla(SOLLUMZ_OT_base, bpy.types.Operator):
                 nla_strip.action_frame_start = clip['start_frames']
                 nla_strip.action_frame_end = clip['end_frames']
 
-        return {'FINISHED'}
+        return True
 
 
 class SOLLUMZ_OT_clip_new_animation(SOLLUMZ_OT_base, bpy.types.Operator):
@@ -151,17 +150,6 @@ class SOLLUMZ_OT_clip_delete_animation(SOLLUMZ_OT_base, bpy.types.Operator):
         return {'FINISHED'}
 
 
-class SOLLUMZ_OT_create_clip_dictionary(SOLLUMZ_OT_base, bpy.types.Operator):
-    bl_idname = "sollumz.crate_clip_dictionary"
-    bl_label = "Create a Clip Dictionary"
-    bl_description = "Creates a new Clip Dictionary"
-
-    def run(self, context):
-        create_clip_dictionary('Clip Dictionary')
-
-        return {'FINISHED'}
-
-
 class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.autogen_clip_from_action"
     bl_label = "Create From Action"
@@ -169,19 +157,23 @@ class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
 
     def run(self, context):
         if len(bpy.context.selected_objects) <= 0:
-            return {'FINISHED'}
+            return False
         
+        if context.scene.autogen_selected_armature == -1:
+            self.report({'ERROR'}, 'Armature is not selected.')
+            return False
+
         name = context.scene.autogen_name.lower()
 
         if name == '':
             self.report({'ERROR'}, 'Clip name can\'t be empy.')
-            return {'FINISHED'}
+            return False
 
         animation_obj = create_animation()
         clip_obj = create_clip()
 
         if animation_obj is None:
-            return {'FINISHED'}
+            return False
 
         animation_properties = animation_obj.animation_properties
         clip_properties = clip_obj.clip_properties
@@ -212,7 +204,7 @@ class SOLLUMZ_OT_autogen_clip_from_action(SOLLUMZ_OT_base, bpy.types.Operator):
         animation_obj.name = name + '_anim'
         clip_obj.name = name
 
-        return {'FINISHED'}
+        return True
 
 
 class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
@@ -268,9 +260,20 @@ class SOLLUMZ_OT_separate_root_motion(SOLLUMZ_OT_base, bpy.types.Operator):
         base_action.fcurves.remove(root_curve_z)
 
 
+class SOLLUMZ_OT_create_clip_dictionary(SOLLUMZ_OT_base, bpy.types.Operator):
+    bl_idname = "sollumz.crate_clip_dictionary"
+    bl_label = "Clip Dictionary"
+    bl_description = "Creates a new Clip Dictionary"
+
+    def run(self, context):
+        create_clip_dictionary('Clip Dictionary')
+
+        return {'FINISHED'}
+
+
 class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_clip"
-    bl_label = "Create a new Clip"
+    bl_label = "Clip"
     bl_description = "Create an empty Clip in selected Clip Dictionary"
 
     def run(self, context):
@@ -284,7 +287,7 @@ class SOLLUMZ_OT_create_clip(SOLLUMZ_OT_base, bpy.types.Operator):
 
 class SOLLUMZ_OT_create_animation(SOLLUMZ_OT_base, bpy.types.Operator):
     bl_idname = "sollumz.crate_animation"
-    bl_label = "Create a new Animation"
+    bl_label = "Animation"
     bl_description = "Create an empty Animation in selected Clip Dictionary"
 
     def run(self, context):

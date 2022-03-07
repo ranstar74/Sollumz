@@ -1,9 +1,4 @@
-from ast import operator
-from operator import contains
-from textwrap import wrap
 import bpy
-
-from ..ydr.ui import SOLLUMZ_PT_DRAWABLE_TOOL_PANEL
 
 from ..sollumz_properties import SollumType
 from ..sollumz_ui import SOLLUMZ_PT_OBJECT_PANEL, SOLLUMZ_UL_armature_list
@@ -23,30 +18,7 @@ def draw_clip_properties(self, context):
         layout.operator(SOLLUMZ_OT_clip_apply_nla.bl_idname, text='Apply Clip to NLA')
         layout.operator(SOLLUMZ_OT_clip_new_animation.bl_idname, text='Add a new Animation Link')
 
-        animation_use_same_armature = True
-        animation_armatures = []
-        for animation_link in clip_properties.animations:
-            if animation_link.animation is None:
-                continue
-
-            animation_properties = animation_link.animation.animation_properties
-
-            armature = animation_properties.armature
-
-            if len(animation_armatures) > 0 and armature is None:
-                animation_use_same_armature = False
-                break
-
-            if contains(animation_armatures, armature):
-                continue
-
-            animation_armatures.append(armature)
-
-            if len(animation_armatures) > 1:
-                animation_use_same_armature = False
-                break
-
-        if animation_use_same_armature is False:
+        if clip_properties.validate_links() is False:
             layout.label(text="Clip animations must share the same armature.", icon="ERROR")
 
 
@@ -130,30 +102,47 @@ class SOLLUMZ_PT_ANIMATION_ACTIONS(bpy.types.Panel):
 
 
 class SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL(bpy.types.Panel):
-    bl_label = "Animations Tools"
+    bl_label = "Animation Tools"
     bl_idname = "SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL"
     bl_category = "Sollumz Tools"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_options = {'DEFAULT_CLOSED'}
-    bl_order = 1
 
     def draw_header(self, context):
         self.layout.label(text="", icon="ARMATURE_DATA")
 
     def draw(self, context):
+        pass
+
+class SOLLUMZ_PT_CREATE_ANIMATIONS_PANEL(bpy.types.Panel):
+    bl_label = "Create Animation Objects"
+    bl_idname = "SOLLUMZ_PT_CREATE_ANIMATIONS_PANEL"
+    bl_category = "Sollumz Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = SOLLUMZ_PT_ANIMATIONS_TOOL_PANEL.bl_idname
+
+    def draw_header(self, context):
+        self.layout.label(text="", icon="POSE_HLT")
+
+    def draw(self, context):
         layout = self.layout
-        
-        layout.operator(SOLLUMZ_OT_create_clip_dictionary.bl_idname)
+
+        row = layout.row()
+        row.operator(SOLLUMZ_OT_create_clip_dictionary.bl_idname)
 
         if len(bpy.context.selected_objects) > 0:
             active_object = bpy.context.selected_objects[0]
             if active_object.sollum_type == SollumType.CLIP or active_object.sollum_type == SollumType.ANIMATION or \
                 active_object.sollum_type == SollumType.ANIMATIONS or active_object.sollum_type == SollumType.CLIPS or \
                 active_object.sollum_type == SollumType.CLIP_DICTIONARY:
-                    
-                layout.operator(SOLLUMZ_OT_create_clip.bl_idname)
-                layout.operator(SOLLUMZ_OT_create_animation.bl_idname)
+                
+                row = layout.row()
+                
+                row.operator(SOLLUMZ_OT_create_clip.bl_idname)
+                row.operator(SOLLUMZ_OT_create_animation.bl_idname)
 
 
 class SOLLUMZ_PT_autogen_clip_from_action(bpy.types.Panel):
